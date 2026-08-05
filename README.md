@@ -3,7 +3,7 @@
 **Contribution Number:** 2  
 **Student:** Ahnaf Labib  
 **Issue:** https://github.com/marimo-team/marimo/issues/5196  
-**Status:** Phase IV In Progress (draft PR open)
+**Status:** Phase IV In Progress (draft PR open; demo video recorded for maintainers)
 
 ---
 
@@ -45,8 +45,9 @@ After a suggestion appears, the user can **Run** the suggested code, see cell ou
 
 - Cloned fork: `https://github.com/AhnfLabib/marimo.git` → `/Users/ahnaflabib/marimo`
 - Branch: `issue-5196-ai-run-before-accept` from `main`
-- Frontend: Node 22+, `pnpm install` in `frontend/` (via `npx pnpm@10`)
-- Followed `CONTRIBUTING.md` / `AGENTS.md` (maintainer approval culture; draft PR; agent disclosure)
+- Frontend: Node 22+, `pnpm` (via shim/`npx pnpm@10`); Python via `uv sync --group dev`
+- Local demo run: Vite on `:3000` + `marimo edit` on `:2718` with notebook `/tmp/marimo-ai-demo.py`
+- Followed `CONTRIBUTING.md` / `AGENTS.md` (maintainer approval culture; draft PR; agent disclosure; CLA signed on PR)
 
 ### Steps to Reproduce (pre-fix behavior on `main`)
 
@@ -71,7 +72,7 @@ Running a cell always executes whatever code is in the editor. Preview therefore
 
 ### Proposed Solution
 
-Add a **Run** button that applies the suggestion via existing `onChange`, calls `runCell()`, and leaves the panel open. Track `hasPreviewed` + session baseline helpers. Reject/close restores baseline; Enter and Send both restore before regenerating.
+Add a **Run** button that applies the suggestion via existing `onChange`, calls `runCell()`, and leaves the panel open. Track `hasPreviewed` + session baseline helpers. Reject/close restores baseline; Enter and Send both restore before regenerating. Aligned with upstream: Reject keeps the prompt open for refinement; X closes the panel.
 
 ### Implementation Plan (UMPIRE)
 
@@ -88,7 +89,7 @@ Add a **Run** button that applies the suggestion via existing `onChange`, calls 
 
 **Review:** Self-review + task reviews against plan; draft PR per CONTRIBUTING + agent rules; issue still `needs discussion` so PR uses `Related to #5196` not `Closes`.
 
-**Evaluate:** Unit tests for helpers and Run button; manual: Run → see output → Reject restores; Run → Accept keeps code; Accept+▶ unchanged.
+**Evaluate:** Unit tests for helpers and Run button; manual video demo of Run → Accept, Accept+▶, and Reject.
 
 ---
 
@@ -106,11 +107,17 @@ Add a **Run** button that applies the suggestion via existing `onChange`, calls 
 
 ### Manual Testing
 
-- [ ] Open AI completion → generate → **Run** → output updates, panel stays open
-- [ ] **Reject** after Run restores original code
-- [ ] **Accept** after Run keeps suggestion and closes panel
-- [ ] After Run, edit prompt and Send/Enter regenerates from restored baseline
-- [ ] Accept+▶ still accept-then-runs
+- [x] Open AI completion (**Refactor with AI** / `⌘⇧E`) → generate → **Run** → output updates, panel stays open
+- [x] **Reject** after suggestion / preview discards suggestion (upstream keeps prompt open)
+- [x] **Accept** after Run keeps suggestion
+- [x] Accept+▶ still accept-then-runs
+- [x] Recorded demo video covering: Run then Accept, Accept+▶, and Reject (for maintainer review)
+- [ ] After Run, edit prompt and Send/Enter regenerates from restored baseline (not re-checked in latest recording session)
+
+**Local demo notes (Aug 5, 2026):**
+- Gemini free quota exhausted mid-setup → switched to **Ollama**
+- Catalog model `gemma4:31b` 404’d (not installed); used custom model `ollama/llama3.2:latest`
+- Prompt `Plot x against y` produced matplotlib suggestion; **Run** showed plot while merge UI stayed open
 
 ---
 
@@ -118,7 +125,11 @@ Add a **Run** button that applies the suggestion via existing `onChange`, calls 
 
 ### Progress
 
-Implemented run-before-accept on branch `issue-5196-ai-run-before-accept`. Fixed Send path to share restore-before-resubmit with Enter (`handlePromptSubmit`).
+- Implemented run-before-accept on branch `issue-5196-ai-run-before-accept`
+- Fixed Send path to share restore-before-resubmit with Enter (`handlePromptSubmit`)
+- Fixed restore when AI panel closes via hotkey / switch cell (`hasPreviewedRef` + `[enabled]` effect)
+- Merged upstream `main` and resolved conflict: Reject keeps prompt open; X uses `handleCloseCompletion` with baseline restore
+- Signed CLA on PR; responded to maintainer request for a demo video
 
 ### Code Changes
 
@@ -134,7 +145,10 @@ Implemented run-before-accept on branch `issue-5196-ai-run-before-accept`. Fixed
   - `08c272ad4` feat(ai): add Run button for previewing AI completions
   - `d66a65d71` feat(ai): run suggested code before accepting completion
   - `ff36ab002` fix(ai): restore baseline on Send after preview run
-- **Approach decisions:** Manual Run only (not auto-execute); freeze session baseline for merge Original after preview; do not change Accept+▶.
+  - `8d2a3202b` fix(ai): restore preview baseline when AI panel closes
+  - `493631fb3` fix(ai): keep prompt open on reject after preview run
+  - `5c24254a0` merge: resolve ai-completion-editor conflict with upstream main
+- **Approach decisions:** Manual Run only (not auto-execute); freeze session baseline for merge Original after preview; do not change Accept+▶; Reject ≠ close (match upstream).
 
 ---
 
@@ -145,9 +159,10 @@ Implemented run-before-accept on branch `issue-5196-ai-run-before-accept`. Fixed
 **PR Description:** Combines CodePath `sample-pr.md` sections with upstream PR template; agent disclosure; draft; `Related to #5196`.
 
 **Maintainer Feedback:**
-- Pending (issue still labeled `needs discussion`)
+- **Light2Dark** asked for a video demo (`@AhnfLabib could you share a video?`)
+- Recorded local demo covering Run → Accept, Accept+▶, and Reject; uploading / posting on the PR
 
-**Status:** Draft PR open — awaiting review
+**Status:** Draft PR open — demo video ready for maintainer review; awaiting further feedback (`needs discussion` still on issue)
 
 ---
 
@@ -155,15 +170,15 @@ Implemented run-before-accept on branch `issue-5196-ai-run-before-accept`. Fixed
 
 ### Technical Skills Gained
 
-AI completion UI state (merge editor vs live cell editor), preview/restore patterns, Vitest + RTL in marimo frontend.
+AI completion UI state (merge editor vs live cell editor), preview/restore patterns, Vitest + RTL in marimo frontend, merging with upstream UX changes, local marimo + Vite + Ollama demo setup.
 
 ### Challenges Overcome
 
-Accept+▶ already existed—needed to re-scope from “Accept and Run” to run-before-accept. Send button initially bypassed restore; fixed via shared `handlePromptSubmit`.
+Accept+▶ already existed—needed to re-scope from “Accept and Run” to run-before-accept. Send button initially bypassed restore; fixed via shared `handlePromptSubmit`. Hotkey-close left previewed code; fixed via `[enabled]` safety net. Merge conflict with upstream Reject-keeps-prompt-open. Gemini quota → Ollama; wrong catalog model name vs locally installed tags.
 
 ### What I'd Do Differently Next Time
 
-Confirm shipped behavior on `main` before claiming a scoped slice; ask maintainers to flip `needs discussion` → `ready` earlier.
+Confirm shipped behavior on `main` before claiming a scoped slice; ask maintainers to flip `needs discussion` → `ready` earlier; set a known-good local Ollama model (`ollama/llama3.2:latest`) before relying on provider catalogs.
 
 ---
 
@@ -172,4 +187,6 @@ Confirm shipped behavior on `main` before claiming a scoped slice; ask maintaine
 - https://github.com/marimo-team/marimo/issues/5196
 - https://github.com/marimo-team/marimo/discussions/5037
 - https://github.com/marimo-team/marimo/blob/main/CONTRIBUTING.md
+- https://github.com/marimo-team/marimo/pull/10458
 - Local design/plan under `docs/superpowers/` (not committed)
+- Ollama local models for demo after Gemini free-tier limit
